@@ -1,0 +1,89 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. 글로벌 기본 차단 안전망
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. 연결 테스트 문서 (클라이언트 오프라인 감지용)
+    match /test/connection {
+      allow get: if true;
+    }
+
+    // 전역 검증 헬퍼 함수
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Todo 엔티티 스키마 검증 함수
+    function isValidTodo(data) {
+      return data.keys().hasAll(['text', 'completed', 'createdAt', 'timestamp']) &&
+        data.keys().size() <= 7 &&
+        data.text is string &&
+        data.text.size() >= 1 &&
+        data.text.size() <= 300 &&
+        data.completed is bool &&
+        data.createdAt is string &&
+        data.createdAt.size() <= 50 &&
+        data.timestamp is number;
+    }
+
+    // 메인 할 일 목록 컬렉션 (/todos/{todoId})
+    match /todos/{todoId} {
+      allow get, list: if true;
+      allow create: if isValidId(todoId) && isValidTodo(incoming());
+      allow update: if isValidId(todoId) && isValidTodo(incoming()) &&
+        incoming().timestamp == existing().timestamp &&
+        (
+          incoming().diff(existing()).affectedKeys().hasOnly(['completed']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['text']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['text', 'completed'])
+        );
+      allow delete: if isValidId(todoId);
+    }
+
+    // 사용자별 할 일 서브컬렉션
+    match /users/{userId}/todos/{todoId} {
+      // 단일 조회 및 목록 조회는 소유자 본인만 가능
+      allow get: if isOwner(userId) && isValidId(todoId);
+      allow list: if isOwner(userId);
+
+      // 생성 시 유효성 검증 및 소유권 일치 강제
+      allow create: if isOwner(userId) &&
+        isValidId(todoId) &&
+        isValidTodo(incoming());
+
+      // 수정 시 소유권 및 불변 필드 유지, 허용된 필드만 변경 가능
+      allow update: if isOwner(userId) &&
+        isValidId(todoId) &&
+        isValidTodo(incoming()) &&
+        incoming().timestamp == existing().timestamp &&
+        (
+          incoming().diff(existing()).affectedKeys().hasOnly(['completed']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['text']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['text', 'completed'])
+        );
+
+      // 삭제는 소유자 본인만 가능
+      allow delete: if isOwner(userId) && isValidId(todoId);
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "entities": {
+    "Todo": {
+      "title": "Todo",
+      "description": "할 일 항목 모델",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "할 일 고유 문서 ID",
+          "maxLength": 128
+        },
+        "text": {
+          "type": "string",
+          "description": "할 일 내용",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "완료 여부"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "화면 표시용 생성 일시 문자열",
+          "maxLength": 50
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "정렬을 위한 밀리초 타임스탬프"
+        }
+      },
+      "required": ["text", "completed", "createdAt", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/todos/{todoId}": {
+      "schema": "#/entities/Todo",
+      "description": "할 일 목록 Firestore 메인 컬렉션"
+    },
+    "/users/{userId}/todos/{todoId}": {
+      "schema": "#/entities/Todo",
+      "description": "사용자별 할 일 목록 서브컬렉션"
+    }
+  }
+}

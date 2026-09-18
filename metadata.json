@@ -1,0 +1,6 @@
+{
+  "name": "Todo List",
+  "description": "React와 Firebase Firestore 클라우드 데이터베이스를 연동한 Apple Minimal 스타일의 반응형 할 일 관리 웹 애플리케이션",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
